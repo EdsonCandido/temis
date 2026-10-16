@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type AppRow, type Host, type Metrics } from "../api";
+import { api, type AppRow, type Host, type Metrics } from "@/api";
+import { AppsDonut } from "@/components/charts/apps-donut";
+import { ContainerBarChart } from "@/components/charts/container-bar-chart";
+import { GaugeChart } from "@/components/charts/gauge-chart";
+import { HealthLegend } from "@/components/health-legend";
+import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type OverviewData = {
   hosts: Array<{ host: Host; metrics?: Metrics; error?: string }>;
@@ -17,91 +28,122 @@ export function Overview() {
       .catch((e) => setError(e.message));
   }, []);
 
-  if (error) return <p className="bad">{error}</p>;
-  if (!data) return <p>lendo sensores…</p>;
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  const running = data.apps.filter((a) => a.status === "running").length;
 
   return (
     <>
-      <p className="kicker">telemetria</p>
-      <h1>Painel</h1>
-      <div className="grid cards">
-        <div className="card">
-          <h3>Hosts</h3>
-          <div className="big">{data.hosts.length}</div>
-        </div>
-        <div className="card">
-          <h3>Apps</h3>
-          <div className="big">{data.apps.length}</div>
-        </div>
-        <div className="card">
-          <h3>No ar</h3>
-          <div className="big ok">{data.apps.filter((a) => a.status === "running").length}</div>
-        </div>
+      <PageHeader
+        kicker="telemetria"
+        title="Painel"
+        description="Snapshot de hosts, containers e saúde da frota. Metas fixas: manter uso abaixo de 70%."
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/apps">Ir para aplicações</Link>
+          </Button>
+        }
+      />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <StatCard label="Hosts" value={data.hosts.length} />
+        <StatCard label="Apps" value={data.apps.length} />
+        <StatCard label="No ar" value={running} tone="success" hint={`${running} de ${data.apps.length} running`} />
       </div>
-      {data.hosts.map((item) => (
-        <section key={item.host.id} className="card" style={{ marginTop: 16 }}>
-          <h2>
-            {item.host.name} <span className="mono">({item.host.kind})</span>
-          </h2>
-          {item.error && <p className="bad">{item.error}</p>}
-          {item.metrics && (
-            <>
-              <div className="grid cards">
-                <div>
-                  <h3>CPU</h3>
-                  <div className="big">{item.metrics.cpuCount} núcleos</div>
-                  <p>load {item.metrics.load1}</p>
-                </div>
-                <div>
-                  <h3>Memória</h3>
-                  <div className="big">{item.metrics.memPercent}%</div>
-                  <p>
-                    {item.metrics.memUsedMb} / {item.metrics.memTotalMb} MB
-                  </p>
-                </div>
-                <div>
-                  <h3>Disco</h3>
-                  <div className="big">{item.metrics.diskPercent}%</div>
-                  <p>
-                    {item.metrics.diskUsedGb} / {item.metrics.diskTotalGb} GB
-                  </p>
-                </div>
-                <div>
-                  <h3>Docker</h3>
-                  <div className={`big ${item.metrics.dockerOk ? "ok" : "bad"}`}>
-                    {item.metrics.dockerOk ? "ok" : "off"}
-                  </div>
-                </div>
+
+      <div className="mb-8 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base uppercase tracking-[0.12em] text-muted-foreground">
+              Status das aplicações
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AppsDonut statuses={data.apps.map((a) => a.status)} />
+          </CardContent>
+        </Card>
+        <HealthLegend />
+      </div>
+
+      <div className="space-y-6">
+        {data.hosts.map((item) => (
+          <Card key={item.host.id}>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
+              <div>
+                <CardTitle className="text-2xl">{item.host.name}</CardTitle>
+                <p className="mt-1 font-mono text-sm text-muted-foreground">
+                  {item.metrics?.hostname ?? item.host.name}
+                </p>
               </div>
-              {item.metrics.containers.length > 0 && (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>container</th>
-                      <th>cpu</th>
-                      <th>mem</th>
-                      <th>%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {item.metrics.containers.map((c) => (
-                      <tr key={c.name}>
-                        <td className="mono">{c.name}</td>
-                        <td>{c.cpu}</td>
-                        <td>{c.mem}</td>
-                        <td>{c.memPercent}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </>
-          )}
-        </section>
-      ))}
-      <p>
-        <Link to="/apps">ir para aplicações</Link>
-      </p>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">{item.host.kind}</Badge>
+                {item.metrics ? (
+                  <Badge variant={item.metrics.dockerOk ? "success" : "danger"}>
+                    Docker {item.metrics.dockerOk ? "ok" : "off"}
+                  </Badge>
+                ) : null}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {item.error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{item.error}</AlertDescription>
+                </Alert>
+              ) : null}
+              {item.metrics ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <GaugeChart
+                      label="Memória"
+                      percent={item.metrics.memPercent}
+                      detail={`${item.metrics.memUsedMb} / ${item.metrics.memTotalMb} MB`}
+                    />
+                    <GaugeChart
+                      label="Disco"
+                      percent={item.metrics.diskPercent}
+                      detail={`${item.metrics.diskUsedGb} / ${item.metrics.diskTotalGb} GB`}
+                    />
+                    <div className="flex flex-col justify-center gap-2 rounded-md border border-border bg-background/40 p-4">
+                      <p className="font-sans text-xs uppercase tracking-[0.14em] text-muted-foreground">CPU</p>
+                      <p className="font-sans text-3xl font-bold">{item.metrics.cpuCount} núcleos</p>
+                      <p className="font-mono text-sm text-muted-foreground">load 1m: {item.metrics.load1}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        meta: load próximo ou abaixo do nº de núcleos
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="mb-3 font-sans text-sm uppercase tracking-[0.12em] text-muted-foreground">
+                      Containers (CPU / Mem)
+                    </h3>
+                    <ContainerBarChart containers={item.metrics.containers} />
+                  </div>
+                </>
+              ) : null}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </>
   );
 }
