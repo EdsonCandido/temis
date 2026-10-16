@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
-import { defaultProxyOptions, type ProxyOptions } from "@temis/shared";
+import { defaultProxyOptions, type StoredProxyOptions } from "@temis/shared";
 import { db, apps, deployments, hosts } from "../db/index.js";
 import { assertOk, pingDocker, runOnHost, type HostRow } from "./executor.js";
+import { removeLocalCustomCert } from "./certs.js";
 import { applyNginx, removeNginx } from "./nginx.js";
 
 function slugify(name: string) {
@@ -57,12 +58,14 @@ export async function deployApp(appId: number) {
     .where(eq(apps.id, appId))
     .run();
 
+  const container = `temis-${app.slug}`;
+  let containerStarted = false;
+
   try {
     log(`host=${host.name} kind=${host.kind}`);
     const dockerVersion = await pingDocker(host);
     log(`docker ${dockerVersion}`);
 
-    const container = `temis-${app.slug}`;
     const imageTag = `temis/${app.slug}:latest`;
     const work = `/opt/temis/apps/${app.slug}`;
     const envFlags = parseEnv(app.envText)
@@ -112,6 +115,7 @@ export async function deployApp(appId: number) {
       `docker run -d --name ${container} --restart unless-stopped -p 127.0.0.1::${app.internalPort} ${envFlags} ${JSON.stringify(image)}`,
     );
     await assertOk(run, "docker run");
+    containerStarted = true;
 
     const portProbe = await runOnHost(
       host,
@@ -122,16 +126,15 @@ export async function deployApp(appId: number) {
     if (!publishedPort) throw new Error("Não foi possível descobrir a porta publicada");
     log(`porta publicada ${publishedPort}`);
 
-    const proxy = JSON.parse(app.proxyJson) as ProxyOptions;
+    const proxy = {
+      ...defaultProxyOptions(),
+      ...(JSON.parse(app.proxyJson) as StoredProxyOptions),
+      https: true,
+    } as StoredProxyOptions;
     const email = process.env.LETSENCRYPT_EMAIL ?? "admin@temis.local";
-    log(`nginx domínio=${app.domain} https=${proxy.https}`);
-    try {
-      await applyNginx(host, app.slug, app.domain, publishedPort, { ...defaultProxyOptions(), ...proxy }, email);
-      log("nginx aplicado");
-    } catch (err) {
-      log(`nginx aviso: ${err instanceof Error ? err.message : String(err)}`);
-      log("app no ar na porta local; ajuste permissão sudo/nginx no host se precisar HTTPS público");
-    }
+    log(`nginx domínio=${app.domain} certMode=${proxy.certMode ?? "auto"}`);
+    await applyNginx(host, app.slug, app.domain, publishedPort, proxy, email);
+    log("nginx + certificado aplicados");
 
     db.update(apps)
       .set({
@@ -149,10 +152,20 @@ export async function deployApp(appId: number) {
       .run();
     return { ok: true, logs: logs.join("\n") };
   } catch (err) {
+    if (containerStarted) {
+      await runOnHost(host, `docker rm -f ${container} >/dev/null 2>&1 || true`);
+      log(`rollback: container ${container} removido (TLS obrigatório)`);
+    }
     const message = err instanceof Error ? err.message : String(err);
     log(`ERRO ${message}`);
     db.update(apps)
-      .set({ status: "error", lastError: message, updatedAt: Date.now() })
+      .set({
+        status: "error",
+        lastError: message,
+        containerName: null,
+        publishedPort: null,
+        updatedAt: Date.now(),
+      })
       .where(eq(apps.id, appId))
       .run();
     db.update(deployments)
@@ -199,6 +212,7 @@ export async function destroyApp(appId: number) {
     if (app.containerName) await runOnHost(host, `docker rm -f ${app.containerName} || true`);
     await removeNginx(host, app.slug);
   }
+  removeLocalCustomCert(app.slug);
   db.delete(apps).where(eq(apps.id, appId)).run();
 }
 

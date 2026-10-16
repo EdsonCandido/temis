@@ -21,6 +21,7 @@ import { SelectNative } from "@/components/ui/select-native";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 const defaults: ProxyOptions = {
   https: true,
@@ -30,6 +31,8 @@ const defaults: ProxyOptions = {
   wwwRedirect: "none",
   clientMaxBodyMb: 64,
   hsts: true,
+  certMode: "auto",
+  hasCustomCert: false,
 };
 
 export function AppDetail() {
@@ -37,6 +40,8 @@ export function AppDetail() {
   const nav = useNavigate();
   const [app, setApp] = useState<AppRow | null>(null);
   const [proxy, setProxy] = useState<ProxyOptions>(defaults);
+  const [certPem, setCertPem] = useState("");
+  const [keyPem, setKeyPem] = useState("");
   const [logs, setLogs] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -48,6 +53,8 @@ export function AppDetail() {
     if (!found) throw new Error("App não encontrado");
     setApp(found);
     setProxy({ ...defaults, ...JSON.parse(found.proxyJson) });
+    setCertPem("");
+    setKeyPem("");
     const l = await api<{ container: string; deployments: Array<{ log: string; status: string }> }>(
       `/api/apps/${id}/logs`,
     );
@@ -75,8 +82,18 @@ export function AppDetail() {
   async function saveProxy(e: FormEvent) {
     e.preventDefault();
     setBusy("proxy");
+    setError("");
     try {
-      await api(`/api/apps/${id}/proxy`, { method: "POST", body: JSON.stringify(proxy) });
+      const body: ProxyOptions = {
+        ...proxy,
+        https: true,
+        certPem: certPem.trim() || undefined,
+        keyPem: keyPem.trim() || undefined,
+      };
+      if (body.certMode === "custom" && !body.hasCustomCert && (!certPem.trim() || !keyPem.trim())) {
+        throw new Error("Certificado próprio exige fullchain PEM e chave privada");
+      }
+      await api(`/api/apps/${id}/proxy`, { method: "POST", body: JSON.stringify(body) });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "erro nginx");
@@ -103,7 +120,8 @@ export function AppDetail() {
     );
   }
 
-  const proxyScore = [proxy.https, proxy.forceHttps, proxy.websocket, proxy.gzip, proxy.hsts].filter(Boolean).length;
+  const proxyScore = [proxy.forceHttps, proxy.websocket, proxy.gzip, proxy.hsts].filter(Boolean).length;
+  const certLabel = proxy.certMode === "custom" ? "próprio" : "Let's Encrypt";
 
   return (
     <>
@@ -112,10 +130,13 @@ export function AppDetail() {
         title={app.name}
         description={`${app.sourceType} · porta ${app.internalPort}${
           app.publishedPort ? ` → 127.0.0.1:${app.publishedPort}` : ""
-        }`}
+        } · TLS ${certLabel}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={app.status} />
+            <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
+              {certLabel}
+            </span>
             <Button asChild variant="outline" size="sm">
               <a href={`https://${app.domain}`} target="_blank" rel="noreferrer">
                 {app.domain}
@@ -167,15 +188,68 @@ export function AppDetail() {
             <CardHeader>
               <CardTitle>Proxy nginx</CardTitle>
               <CardDescription>
-                Marca o que quer. Temis gera o vhost e pede certificado. Sem editar nginx na mão. Ativo:{" "}
-                {proxyScore}/5 proteções principais.
+                TLS obrigatório. Escolha Let's Encrypt (renovação automática) ou cole certificado próprio. Ativo:{" "}
+                {proxyScore}/4 opções extras.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={saveProxy} className="grid gap-5 sm:grid-cols-2">
+                <Field label="certificado TLS" htmlFor="certMode" className="sm:col-span-2">
+                  <SelectNative
+                    id="certMode"
+                    value={proxy.certMode}
+                    onChange={(e) =>
+                      setProxy({
+                        ...proxy,
+                        certMode: e.target.value as ProxyOptions["certMode"],
+                      })
+                    }
+                  >
+                    <option value="auto">Let's Encrypt (automático + renovação)</option>
+                    <option value="custom">Certificado próprio (PEM + chave)</option>
+                  </SelectNative>
+                </Field>
+                {proxy.certMode === "custom" ? (
+                  <>
+                    {proxy.hasCustomCert ? (
+                      <p className="sm:col-span-2 text-sm text-muted-foreground">
+                        Certificado próprio já salvo. Cole de novo só para substituir.
+                      </p>
+                    ) : null}
+                    <Field label="certificado (fullchain PEM)" htmlFor="certPem" className="sm:col-span-2">
+                      <Textarea
+                        id="certPem"
+                        rows={5}
+                        className="font-mono text-xs"
+                        value={certPem}
+                        onChange={(e) => setCertPem(e.target.value)}
+                        placeholder={
+                          proxy.hasCustomCert
+                            ? "colar de novo para substituir"
+                            : "-----BEGIN CERTIFICATE-----"
+                        }
+                        required={!proxy.hasCustomCert}
+                      />
+                    </Field>
+                    <Field label="chave privada (PEM)" htmlFor="keyPem" className="sm:col-span-2">
+                      <Textarea
+                        id="keyPem"
+                        rows={5}
+                        className="font-mono text-xs"
+                        value={keyPem}
+                        onChange={(e) => setKeyPem(e.target.value)}
+                        placeholder={
+                          proxy.hasCustomCert
+                            ? "colar de novo para substituir"
+                            : "-----BEGIN PRIVATE KEY-----"
+                        }
+                        required={!proxy.hasCustomCert}
+                      />
+                    </Field>
+                  </>
+                ) : null}
                 {(
                   [
-                    ["https", "HTTPS (Let's Encrypt)"],
                     ["forceHttps", "forçar HTTPS"],
                     ["websocket", "WebSocket"],
                     ["gzip", "gzip"],

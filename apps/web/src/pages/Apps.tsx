@@ -16,6 +16,7 @@ export function Apps() {
   const [apps, setApps] = useState<AppRow[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [sourceType, setSourceType] = useState<"docker" | "github">("docker");
+  const [certMode, setCertMode] = useState<"auto" | "custom">("auto");
   const [error, setError] = useState("");
 
   async function load() {
@@ -32,6 +33,12 @@ export function Apps() {
     e.preventDefault();
     setError("");
     const fd = new FormData(e.currentTarget);
+    const certPem = String(fd.get("certPem") || "");
+    const keyPem = String(fd.get("keyPem") || "");
+    if (certMode === "custom" && (!certPem.trim() || !keyPem.trim())) {
+      setError("Certificado próprio exige fullchain PEM e chave privada");
+      return;
+    }
     try {
       await api("/api/apps", {
         method: "POST",
@@ -45,10 +52,16 @@ export function Apps() {
           dockerfilePath: String(fd.get("dockerfilePath") || "Dockerfile"),
           internalPort: Number(fd.get("internalPort")),
           envText: String(fd.get("envText") || ""),
+          proxy: {
+            certMode,
+            https: true,
+            ...(certMode === "custom" ? { certPem, keyPem } : {}),
+          },
         }),
       });
       e.currentTarget.reset();
       setSourceType("docker");
+      setCertMode("auto");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "falha ao cadastrar");
@@ -60,7 +73,7 @@ export function Apps() {
       <PageHeader
         kicker="carga útil"
         title="Aplicações"
-        description="Imagem Docker (registry) ou repositório GitHub. Domínio vira vhost nginx + certificado."
+        description="Imagem Docker ou GitHub. TLS obrigatório: Let's Encrypt automático ou certificado próprio."
       />
 
       {error ? (
@@ -136,6 +149,40 @@ export function Apps() {
               <Field label="variáveis de ambiente" htmlFor="envText" className="sm:col-span-2">
                 <Textarea id="envText" name="envText" rows={4} placeholder="KEY=valor, uma por linha" />
               </Field>
+              <Field label="certificado TLS" htmlFor="certMode" className="sm:col-span-2">
+                <SelectNative
+                  id="certMode"
+                  value={certMode}
+                  onChange={(e) => setCertMode(e.target.value as "auto" | "custom")}
+                >
+                  <option value="auto">Let's Encrypt (automático + renovação)</option>
+                  <option value="custom">Certificado próprio (PEM + chave)</option>
+                </SelectNative>
+              </Field>
+              {certMode === "custom" ? (
+                <>
+                  <Field label="certificado (fullchain PEM)" htmlFor="certPem" className="sm:col-span-2">
+                    <Textarea
+                      id="certPem"
+                      name="certPem"
+                      rows={5}
+                      required
+                      className="font-mono text-xs"
+                      placeholder="-----BEGIN CERTIFICATE-----"
+                    />
+                  </Field>
+                  <Field label="chave privada (PEM)" htmlFor="keyPem" className="sm:col-span-2">
+                    <Textarea
+                      id="keyPem"
+                      name="keyPem"
+                      rows={5}
+                      required
+                      className="font-mono text-xs"
+                      placeholder="-----BEGIN PRIVATE KEY-----"
+                    />
+                  </Field>
+                </>
+              ) : null}
               <div className="sm:col-span-2">
                 <Button type="submit" disabled={hosts.length === 0}>
                   Cadastrar app

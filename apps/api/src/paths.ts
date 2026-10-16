@@ -18,3 +18,12 @@ export function appsWorkDir() {
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+export function certsDir(slug?: string) {
+  const dir = path.join(dataDir(), "certs");
+  fs.mkdirSync(dir, { recursive: true });
+  if (!slug) return dir;
+  const appDir = path.join(dir, slug);
+  fs.mkdirSync(appDir, { recursive: true });
+  return appDir;
+}
