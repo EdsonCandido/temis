@@ -74,4 +74,8 @@ export type ProxyOptions = {
   wwwRedirect: "none" | "to-www" | "to-apex";
   clientMaxBodyMb: number;
   hsts: boolean;
+  certMode: "auto" | "custom";
+  hasCustomCert: boolean;
+  certPem?: string;
+  keyPem?: string;
 };
