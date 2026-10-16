@@ -1,0 +1,30 @@
+{
+  "name": "@temis/api",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@fastify/jwt": "^9.0.3",
+    "@temis/shared": "*",
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^11.9.1",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.41.0",
+    "fastify": "^5.2.2",
+    "ssh2": "^1.16.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.13.10",
+    "@types/ssh2": "^1.15.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
