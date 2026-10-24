@@ -4,8 +4,6 @@ data
 .env
 *.log
 .DS_Store
-apps/web/dist
-apps/api/dist
 *.sqlite
 *.sqlite-journal
 .vite

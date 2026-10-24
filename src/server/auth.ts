@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { loginSchema } from "@temis/shared";
+import { loginSchema } from "../shared/index.js";
 import { db, users } from "./db/index.js";
 
 export async function requireUser(req: FastifyRequest) {

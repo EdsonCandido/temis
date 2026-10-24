@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { ProxyOptions, StoredProxyOptions } from "@temis/shared";
+import type { ProxyOptions, StoredProxyOptions } from "../../shared/index.js";
 import { nginxDir } from "../paths.js";
 import { assertOk, runOnHost, type HostRow } from "./executor.js";
 import {

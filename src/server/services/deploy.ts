@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { defaultProxyOptions, type StoredProxyOptions } from "@temis/shared";
+import { defaultProxyOptions, type StoredProxyOptions } from "../../shared/index.js";
 import { db, apps, deployments, hosts } from "../db/index.js";
 import { assertOk, pingDocker, runOnHost, type HostRow } from "./executor.js";
 import { removeLocalCustomCert } from "./certs.js";
