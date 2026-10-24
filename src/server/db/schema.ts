@@ -14,6 +14,7 @@ export const hosts = sqliteTable("hosts", {
   sshPort: integer("ssh_port"),
   sshUser: text("ssh_user"),
   sshKeyPath: text("ssh_key_path"),
+  sshPassword: text("ssh_password"),
   createdAt: integer("created_at").notNull(),
 });
 

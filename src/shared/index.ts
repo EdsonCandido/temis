@@ -83,6 +83,7 @@ export const hostInputSchema = z.object({
   sshPort: z.number().int().min(1).max(65535).optional(),
   sshUser: z.string().optional(),
   sshKeyPath: z.string().optional(),
+  sshPassword: z.string().optional(),
 });
 
 export const appInputSchema = z.object({

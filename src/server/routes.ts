@@ -8,11 +8,11 @@ import {
   stripProxySecrets,
   type ProxyOptions,
   type StoredProxyOptions,
-} from "@temis/shared";
+} from "../shared/index.js";
 import { db, apps, deployments, hosts } from "./db/index.js";
 import { requireUser } from "./auth.js";
-import { pingDocker } from "./services/executor.js";
-import { collectHostMetrics } from "./services/metrics.js";
+import { pingDocker, probeConnection } from "./services/executor.js";
+import { collectHostMetrics, markKnownContainers } from "./services/metrics.js";
 import {
   appLogs,
   deployApp,
@@ -55,6 +55,11 @@ function persistProxyFromInput(
   return stripProxySecrets(merged);
 }
 
+function publicHost(row: typeof hosts.$inferSelect) {
+  const { sshPassword: _secret, ...rest } = row;
+  return { ...rest, hasSshPassword: Boolean(_secret) };
+}
+
 function publicApp(row: typeof apps.$inferSelect) {
   const proxy = {
     ...defaultProxyOptions(),
@@ -74,12 +79,17 @@ export async function registerRoutes(app: FastifyInstance) {
     await requireUser(req);
   });
 
-  app.get("/api/hosts", async () => db.select().from(hosts).all());
+  app.get("/api/hosts", async () => db.select().from(hosts).all().map(publicHost));
 
   app.post("/api/hosts", async (req, reply) => {
     const body = hostInputSchema.parse(req.body);
-    if (body.kind === "ssh" && (!body.sshHost || !body.sshUser)) {
-      return reply.code(400).send({ error: "SSH exige host e usuário" });
+    if (body.kind === "ssh") {
+      if (!body.sshHost?.trim() || !body.sshUser?.trim()) {
+        return reply.code(400).send({ error: "SSH exige host e usuário" });
+      }
+      if (!body.sshPassword?.trim() && !body.sshKeyPath?.trim()) {
+        return reply.code(400).send({ error: "SSH exige senha ou caminho da chave" });
+      }
     }
     const row = db
       .insert(hosts)
@@ -89,12 +99,13 @@ export async function registerRoutes(app: FastifyInstance) {
         sshHost: body.sshHost ?? null,
         sshPort: body.sshPort ?? 22,
         sshUser: body.sshUser ?? null,
-        sshKeyPath: body.sshKeyPath ?? null,
+        sshKeyPath: body.sshKeyPath?.trim() || null,
+        sshPassword: body.sshPassword?.trim() || null,
         createdAt: Date.now(),
       })
       .returning()
       .get();
-    return row;
+    return publicHost(row);
   });
 
   app.delete("/api/hosts/:id", async (req, reply) => {
@@ -113,21 +124,44 @@ export async function registerRoutes(app: FastifyInstance) {
     return { ok: true, docker: version };
   });
 
+  app.post("/api/hosts/:id/connect", async (req) => {
+    const id = Number((req.params as { id: string }).id);
+    const host = db.select().from(hosts).where(eq(hosts.id, id)).get();
+    if (!host) throw Object.assign(new Error("Host não encontrado"), { statusCode: 404 });
+    return probeConnection(host);
+  });
+
   app.get("/api/hosts/:id/metrics", async (req) => {
     const id = Number((req.params as { id: string }).id);
     const host = db.select().from(hosts).where(eq(hosts.id, id)).get();
     if (!host) throw Object.assign(new Error("Host não encontrado"), { statusCode: 404 });
-    return collectHostMetrics(host);
+    const metrics = await collectHostMetrics(host);
+    const hostApps = db.select().from(apps).where(eq(apps.hostId, id)).all();
+    return {
+      ...metrics,
+      containers: markKnownContainers(metrics.containers, hostApps),
+    };
   });
 
   app.get("/api/overview", async () => {
     const allHosts = db.select().from(hosts).all();
+    const allApps = db.select().from(apps).all();
     const metrics = await Promise.all(
       allHosts.map(async (h) => {
         try {
-          return { host: h, metrics: await collectHostMetrics(h) };
+          const collected = await collectHostMetrics(h);
+          return {
+            host: publicHost(h),
+            metrics: {
+              ...collected,
+              containers: markKnownContainers(
+                collected.containers,
+                allApps.filter((a) => a.hostId === h.id),
+              ),
+            },
+          };
         } catch (err) {
-          return { host: h, error: err instanceof Error ? err.message : String(err) };
+          return { host: publicHost(h), error: err instanceof Error ? err.message : String(err) };
         }
       }),
     );

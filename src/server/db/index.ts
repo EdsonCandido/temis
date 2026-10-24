@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS hosts (
   ssh_port INTEGER,
   ssh_user TEXT,
   ssh_key_path TEXT,
+  ssh_password TEXT,
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS apps (
@@ -57,6 +58,11 @@ CREATE TABLE IF NOT EXISTS deployments (
   created_at INTEGER NOT NULL
 );
 `);
+
+const hostCols = sqlite.prepare("PRAGMA table_info(hosts)").all() as Array<{ name: string }>;
+if (!hostCols.some((c) => c.name === "ssh_password")) {
+  sqlite.exec("ALTER TABLE hosts ADD COLUMN ssh_password TEXT");
+}
 
 export const db = drizzle(sqlite, { schema: { users, hosts, apps, deployments } });
 
