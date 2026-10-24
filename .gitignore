@@ -7,3 +7,7 @@ data
 *.sqlite
 *.sqlite-journal
 .vite
+.agents/
+.taste-skill/
+skills-lock.json
+.cursor/skills/taste-skill/
