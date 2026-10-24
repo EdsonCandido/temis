@@ -11,7 +11,7 @@ export function setToken(value: string | null) {
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set("Content-Type", "application/json");
+  if (init.body) headers.set("Content-Type", "application/json");
   const t = token();
   if (t) headers.set("Authorization", `Bearer ${t}`);
   const res = await fetch(path, { ...init, headers });
@@ -32,6 +32,7 @@ export type Host = {
   sshPort: number | null;
   sshUser: string | null;
   sshKeyPath: string | null;
+  hasSshPassword?: boolean;
 };
 
 export type AppRow = {
@@ -49,6 +50,7 @@ export type AppRow = {
   proxyJson: string;
   status: string;
   lastError: string | null;
+  containerName: string | null;
   publishedPort: number | null;
 };
 
@@ -63,7 +65,16 @@ export type Metrics = {
   diskTotalGb: number;
   diskPercent: number;
   dockerOk: boolean;
-  containers: Array<{ name: string; status: string; cpu: string; mem: string; memPercent: string }>;
+  containers: Array<{
+    name: string;
+    status: string;
+    image: string;
+    cpu: string;
+    mem: string;
+    memPercent: string;
+    known: boolean;
+    appName: string | null;
+  }>;
 };
 
 export type ProxyOptions = {

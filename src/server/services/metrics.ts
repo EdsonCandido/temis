@@ -13,14 +13,21 @@ export type HostMetrics = {
   diskTotalGb: number;
   diskPercent: number;
   dockerOk: boolean;
-  containers: Array<{
-    name: string;
-    status: string;
-    cpu: string;
-    mem: string;
-    memPercent: string;
-  }>;
+  containers: ContainerMetric[];
 };
+
+export type ContainerMetric = {
+  name: string;
+  status: string;
+  image: string;
+  cpu: string;
+  mem: string;
+  memPercent: string;
+  known: boolean;
+  appName: string | null;
+};
+
+type RawContainer = Omit<ContainerMetric, "known" | "appName">;
 
 type MemStats = {
   memUsedMb: number;
@@ -115,6 +122,115 @@ export function parseMem(stdout: string): MemStats {
   return parseLinuxFree(stdout) ?? parseVmStat(stdout) ?? fallbackOsMem();
 }
 
+function pipeFields(line: string, expected: number): string[] {
+  const parts = line.split("|");
+  if (parts.length <= expected) return parts;
+  return [...parts.slice(0, expected - 1), parts.slice(expected - 1).join("|")];
+}
+
+export function normalizeContainerName(name: string): string {
+  return name.trim().replace(/^\//, "").split(",")[0]?.trim() ?? "";
+}
+
+function emptyContainer(name: string): RawContainer {
+  return { name, status: "", image: "", cpu: "", mem: "", memPercent: "" };
+}
+
+function parseDockerPsLine(line: string): RawContainer | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.includes("DOCKER_") || trimmed.startsWith("---")) return null;
+
+  if (trimmed.startsWith("{")) {
+    try {
+      const row = JSON.parse(trimmed) as Record<string, unknown>;
+      const name = normalizeContainerName(String(row.Names ?? row.Name ?? ""));
+      if (!name) return null;
+      return {
+        ...emptyContainer(name),
+        status: String(row.State || row.Status || "").trim(),
+        image: String(row.Image ?? "").trim(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  if (!trimmed.includes("|")) return null;
+  const rawParts = trimmed.split("|");
+  const expected = rawParts.length >= 4 ? 4 : 3;
+  const parts = pipeFields(trimmed, expected);
+  const name = normalizeContainerName(parts[0] ?? "");
+  if (!name) return null;
+  if (expected === 4) {
+    return {
+      ...emptyContainer(name),
+      status: (parts[1] || parts[2] || "").trim(),
+      image: (parts[3] ?? "").trim(),
+    };
+  }
+  return {
+    ...emptyContainer(name),
+    status: (parts[1] ?? "").trim(),
+    image: (parts[2] ?? "").trim(),
+  };
+}
+
+export function parseDockerInventory(dockerBlock: string): RawContainer[] {
+  const psBlock = dockerBlock.includes("---PS---")
+    ? (dockerBlock.split("---PS---")[1]?.split("---STATS---")[0] ?? "")
+    : "";
+  const statsBlock = dockerBlock.includes("---STATS---")
+    ? (dockerBlock.split("---STATS---")[1] ?? "")
+    : dockerBlock;
+
+  const byName = new Map<string, RawContainer>();
+
+  for (const line of psBlock.split("\n")) {
+    const parsed = parseDockerPsLine(line);
+    if (!parsed) continue;
+    byName.set(parsed.name, parsed);
+  }
+
+  for (const line of statsBlock.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.includes("|") || trimmed.includes("DOCKER_") || trimmed.startsWith("---")) continue;
+    const [nameRaw, cpu, memUsage, memPercent] = pipeFields(trimmed, 4);
+    const name = normalizeContainerName(nameRaw ?? "");
+    if (!name) continue;
+    const prev = byName.get(name);
+    byName.set(name, {
+      name,
+      status: prev?.status ?? "",
+      image: prev?.image ?? "",
+      cpu: (cpu ?? "").trim(),
+      mem: (memUsage ?? "").trim(),
+      memPercent: (memPercent ?? "").trim(),
+    });
+  }
+
+  return [...byName.values()];
+}
+
+export function markKnownContainers(
+  containers: RawContainer[],
+  knownApps: Array<{ name: string; slug: string; containerName: string | null }>,
+): ContainerMetric[] {
+  const byName = new Map<string, string>();
+  for (const app of knownApps) {
+    if (app.containerName) byName.set(normalizeContainerName(app.containerName), app.name);
+    byName.set(`temis-${app.slug}`, app.name);
+  }
+  return containers.map((c) => {
+    const key = normalizeContainerName(c.name);
+    return {
+      ...c,
+      name: key,
+      known: byName.has(key),
+      appName: byName.get(key) ?? null,
+    };
+  });
+}
+
 export async function collectHostMetrics(host: HostRow): Promise<HostMetrics> {
   const script = [
     "echo HOSTNAME=$(hostname)",
@@ -125,7 +241,10 @@ export async function collectHostMetrics(host: HostRow): Promise<HostMetrics> {
     "df -k / | tail -1",
     "echo '---DOCKER---'",
     "docker info >/dev/null 2>&1 && echo DOCKER_OK || echo DOCKER_FAIL",
-    "docker stats --no-stream --format '{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}' 2>/dev/null || true",
+    "echo '---PS---'",
+    'docker ps -a --no-trunc --format "{{json .}}" 2>/dev/null || docker ps -a --format "{{.Names}}|{{.Status}}|{{.Image}}" 2>/dev/null || true',
+    "echo '---STATS---'",
+    'docker stats --no-stream --format "{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}" 2>/dev/null || true',
   ].join("; ");
 
   const r = await runOnHost(host, script);
@@ -139,20 +258,7 @@ export async function collectHostMetrics(host: HostRow): Promise<HostMetrics> {
   const mem = parseMem(out);
   const dockerOk = out.includes("DOCKER_OK");
   const dockerBlock = out.split("---DOCKER---")[1] ?? "";
-  const containers = dockerBlock
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.includes("|") && !l.includes("DOCKER_"))
-    .map((l) => {
-      const [name, cpu, memUsage, memPercent] = l.split("|");
-      return {
-        name: name ?? "",
-        cpu: cpu ?? "",
-        mem: memUsage ?? "",
-        memPercent: memPercent ?? "",
-        status: "",
-      };
-    });
+  const containers = markKnownContainers(parseDockerInventory(dockerBlock), []);
 
   return {
     hostname,

@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -13,6 +14,7 @@ type ContainerStat = {
   name: string;
   cpu: string;
   memPercent: string;
+  known?: boolean;
 };
 
 function parsePercent(value: string): number {
@@ -23,12 +25,14 @@ function parsePercent(value: string): number {
 export function ContainerBarChart({ containers }: { containers: ContainerStat[] }) {
   const data = containers.map((c) => ({
     name: c.name.length > 18 ? `${c.name.slice(0, 16)}…` : c.name,
+    fullName: c.name,
     cpu: parsePercent(c.cpu),
     mem: parsePercent(c.memPercent),
+    known: Boolean(c.known),
   }));
 
   if (data.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nenhum container ativo neste host.</p>;
+    return <p className="text-sm text-muted-foreground">Nenhum container neste host.</p>;
   }
 
   return (
@@ -45,10 +49,29 @@ export function ContainerBarChart({ containers }: { containers: ContainerStat[] 
               borderRadius: 6,
               color: "var(--color-foreground)",
             }}
+            formatter={(value, key, item) => {
+              const known = Boolean(item?.payload?.known);
+              const series = key === "cpu" ? "CPU %" : "Mem %";
+              return [`${value}% · ${known ? "Têmis" : "não conhecida"}`, series];
+            }}
           />
-          <Legend />
-          <Bar dataKey="cpu" name="CPU %" fill="var(--color-chart-1)" radius={[2, 2, 0, 0]} />
-          <Bar dataKey="mem" name="Mem %" fill="var(--color-chart-2)" radius={[2, 2, 0, 0]} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar dataKey="cpu" name="CPU %" radius={[0, 0, 0, 0]}>
+            {data.map((row) => (
+              <Cell
+                key={`cpu-${row.fullName}`}
+                fill={row.known ? "var(--color-chart-1)" : "var(--color-chart-5)"}
+              />
+            ))}
+          </Bar>
+          <Bar dataKey="mem" name="Mem %" radius={[0, 0, 0, 0]}>
+            {data.map((row) => (
+              <Cell
+                key={`mem-${row.fullName}`}
+                fill={row.known ? "var(--color-chart-4)" : "var(--color-chart-3)"}
+              />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
