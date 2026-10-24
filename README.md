@@ -22,15 +22,16 @@ Você não edita nginx na mão.
 ```bash
 cp .env.example .env
 npm install
-npm run dev:api   # http://127.0.0.1:3780
-npm run dev:web   # http://127.0.0.1:5173
+npm run dev
 ```
+
+Painel e API no mesmo processo: `http://127.0.0.1:3780`.
 
 Login padrão (`.env`): `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 
 ## Fluxo
 
-1. **Hosts** — `local` se o Temis roda na VPS/notebook; `SSH` se o painel está na sua máquina e a VPS é remota (usuário + chave).
+1. **Hosts** — `local` se o Temis roda na VPS/notebook; `SSH` se o painel está na sua máquina e a VPS é remota (usuário + senha, ou chave).
 2. **Testar Docker** no host.
 3. **Aplicações** — origem `docker` / `github` + modo de certificado (`Let's Encrypt` ou PEM próprio).
 4. Abrir o app → **Deploy** (falha e remove o container se o certificado não ficar válido).
@@ -41,5 +42,5 @@ Login padrão (`.env`): `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 - Container escuta só em `127.0.0.1`; a internet entra pelo nginx 80/443.
 - Nenhuma app sobe sem certificado. Let's Encrypt precisa de DNS (A/AAAA) e porta 80 aberta.
 - Certificado próprio: cole fullchain PEM + chave privada; renovação fica a cargo de você.
-- SSH usa chave no caminho informado (arquivo na máquina onde o Temis API roda).
+- SSH aceita senha ou chave (arquivo na máquina onde o Temis API roda). Senha não volta na API.
 - Espaço em disco / memória: página **Painel**, por host.
