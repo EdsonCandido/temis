@@ -1,24 +1,24 @@
 import type { ReactNode } from "react";
 
 export function PageHeader({
-  kicker,
   title,
   description,
   actions,
 }: {
-  kicker: string;
+  kicker?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="space-y-2">
-        <p className="font-sans text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{kicker}</p>
-        <h1 className="font-sans text-3xl font-bold tracking-wide text-foreground md:text-4xl">{title}</h1>
-        {description ? <p className="max-w-2xl text-muted-foreground">{description}</p> : null}
+    <div className="mb-6 space-y-4">
+      <div className="max-w-[65ch] space-y-1.5">
+        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        {description ? <p className="text-sm leading-[1.45] text-muted-foreground">{description}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-end">{actions}</div>
+      ) : null}
     </div>
   );
 }

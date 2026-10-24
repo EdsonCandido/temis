@@ -1,0 +1,80 @@
+---
+description: Padrões obrigatórios de UI/UX, Tailwind CSS, paleta Bootstrap, responsividade, formulários, notificações e confirmações.
+alwaysApply: true
+---
+
+# Regra permanente de UI/UX e Tailwind CSS
+
+## Objetivo
+Entregue interfaces consistentes, claras, acessíveis e responsivas sem depender de pedidos posteriores de redesign. Trate o visual como parte da implementação, não como acabamento opcional.
+
+## Antes de editar uma interface
+- Inspecione a estrutura, framework, versão do Tailwind, componentes existentes e convenções já adotadas. Não presuma Tailwind v3/v4 nem adicione bibliotecas sem necessidade.
+- Reutilize componentes e padrões existentes. Se houver um design system, shadcn/ui ou biblioteca de componentes no projeto, estenda-o em vez de criar padrões concorrentes.
+- Para novas telas, defina hierarquia visual, ação principal, estados vazios/carregando/erro/sucesso e comportamento mobile antes de escrever JSX/HTML.
+- Faça a implementação completa: estados de interação, responsividade, acessibilidade e feedback. Não entregue apenas uma estrutura visual estática quando a funcionalidade pede comportamento.
+
+## Direção visual obrigatória
+- Use Bootstrap 5.3 como referência para papéis semânticos de cor, organização de componentes e breakpoints, mas implemente com utilitários e tokens do Tailwind. **Não instale nem misture o CSS do Bootstrap** apenas para obter esse estilo.
+- Cor primária: azul Bootstrap `#0d6efd`. Não use roxo/violeta como cor primária.
+- Ações comuns/primárias: azul. Confirmações positivas: verde. Informações: ciano/azul-claro. Atenção: amarelo/âmbar com texto escuro. Vermelho somente para erro, perigo e ações destrutivas. Preto e branco são neutros, não cores de destaque de botão.
+- Use as variáveis/tokens centralizados em `design-system/tailwind-v4-theme.css` (Tailwind v4) ou `design-system/tailwind.config.v3.example.ts` (Tailwind v3), adaptando o arquivo ao projeto. Nunca espalhe hexadecimais arbitrários pela interface.
+- Priorize fundo neutro, superfícies claras, bordas suaves, texto de alto contraste e uma cor de destaque por contexto. Evite gradientes decorativos, sombras pesadas, excesso de cores, cards dentro de cards, efeitos de vidro e cantos exageradamente arredondados sem justificativa.
+- Mantenha uma hierarquia perceptível entre título da página, descrição, seções, conteúdo e ações. Não transforme tudo em cards; use cards quando agruparem conteúdo relacionado.
+- Use ícones de forma consistente e com rótulo acessível quando o significado não for óbvio. Não use emoji como ícone funcional de interface.
+
+## Layout e organização
+- Comece pelo mobile e adicione variantes `sm:`, `md:`, `lg:`, `xl:` conforme o espaço realmente exigir.
+- Use containers alinhados e largura de leitura controlada (`mx-auto`, `w-full`, `max-w-*`, padding consistente). Evite conteúdo colado nas bordas.
+- Use uma escala de espaçamento coerente: `gap-2`, `gap-3`, `gap-4`, `gap-6`, `gap-8` e padding equivalente, em vez de números arbitrários em cada elemento.
+- Layouts de formulários: uma coluna em telas estreitas; duas colunas a partir de `md:` quando os campos forem relacionados e curtos; três colunas apenas para dados compactos em telas largas. Não force campos longos em colunas apertadas.
+- Em mobile, navegação lateral vira drawer/menu recolhível; ações importantes continuam visíveis; tabelas devem ter adaptação real (colunas prioritárias, cards ou contêiner com rolagem horizontal identificável), não quebrar o layout.
+- Use breakpoints móveis primeiro inspirados no Bootstrap: `sm=576px`, `md=768px`, `lg=992px`, `xl=1200px`, `2xl=1400px`, se a configuração do projeto permitir. No Tailwind, o estilo sem prefixo atende a menor tela; prefixos aplicam-se a partir do breakpoint indicado.
+- Evite valores arbitrários (`w-[537px]`, `mt-[13px]`) quando uma escala ou token existente atende. Valores arbitrários são aceitáveis somente quando houver uma razão de layout real.
+
+## Padrões de tamanho — manter consistentes
+- Altura padrão de input, select e botão: **40px** (`h-10` / `min-h-10`). Mantenha a mesma altura na mesma linha de formulário.
+- Use label sempre visível, alinhada acima do campo, com espaçamento consistente. Placeholder é exemplo ou dica, nunca substitui o label.
+- Input padrão: largura disponível, padding horizontal consistente, borda neutra, raio moderado, foco visível e estado disabled claro. Não altere a altura de campos isolados sem uma necessidade explícita.
+- Textarea: mesma largura e estilo dos outros controles; altura inicial recomendada de 96–120px, com redimensionamento definido pelo design system.
+- Controles compactos só em tabelas densas ou barras de filtro explicitamente compactas; não misture alturas padrão e compactas no mesmo formulário.
+- Botões padrão têm 40px de altura; ação pequena e secundária pode usar 32–36px, ação de destaque em contexto touch pode usar 44px. Mantenha a regra dentro de cada contexto.
+- Padronize border radius, borda, tipografia, foco, hover, disabled e loading. Estados de loading devem impedir envio duplicado e fornecer texto/indicador.
+
+## Botões e ações
+- Sempre diferencie visualmente a ação principal das secundárias. Em geral, uma ação primária por área de decisão.
+- Primário: fundo azul `primary`, texto branco, hover/active mais escuros. Secundário: superfície clara, borda neutra e texto escuro. Positivo: verde somente quando o significado for explicitamente sucesso/ativação. Amarelo com texto escuro para atenção. Destrutivo: vermelho apenas para excluir, cancelar irreversivelmente ou outra ação perigosa.
+- Não use botão preto, branco puro ou vermelho como botão primário genérico. Botão com aparência de link fica para ações de baixa ênfase.
+- Botões devem ter verbo objetivo (“Salvar alterações”, “Criar usuário”, “Excluir registro”) e área clicável confortável. Ícone sozinho exige `aria-label`/nome acessível e tooltip quando necessário.
+- Em formulários, preserve a ordem: ação primária primeiro (ou no lugar consistente do sistema), secundária depois; cancelar não deve parecer mais importante que salvar.
+
+## Notificações e mensagens
+- Validação de campo: mensagem curta junto ao campo, associada programaticamente (`aria-describedby`) e sem depender apenas da cor.
+- Erro de formulário: mensagem próxima ao formulário, explicando o problema e como corrigir; preserve os valores já preenchidos.
+- Toast: feedback transitório para resultado de uma ação concluída sem exigir decisão (ex.: “Alterações salvas”). Não use toast como único local para erro crítico, instrução importante ou mensagem que precisa ser lida antes de continuar.
+- Alert inline/banner: use quando a mensagem precisa permanecer visível no contexto, afeta o fluxo, exige uma providência ou descreve indisponibilidade/risco. Inclua ação de correção quando possível.
+- Confirmação de operação concluída: toast para sucesso comum; tela/estado persistente para conclusão de fluxo complexo, envio relevante ou próximo passo obrigatório.
+- Erros recuperáveis devem explicar o próximo passo; não mostre apenas “Algo deu errado”. Não exponha stack trace, detalhes internos ou dados sensíveis ao usuário.
+- Não dispare notificações duplicadas para o mesmo evento. Respeite acessibilidade (`role="status"` para status, `role="alert"` para erro urgente), duração suficiente e opção de dispensar quando adequada.
+
+## Modal, diálogo e confirmação
+- Use modal para uma tarefa curta, focada e contextual, que não precisa de navegação própria: confirmação destrutiva, edição rápida de poucos campos ou escolha pequena.
+- Não use modal para páginas completas, formulários longos, fluxos com várias etapas, tabelas extensas ou conteúdo que precise de URL/navegação. Use uma página/rota dedicada.
+- Modal de confirmação deve declarar a consequência em linguagem clara, identificar o item afetado quando útil e oferecer “Cancelar” como saída segura. A ação destrutiva deve ter estilo danger; não use confirmação genérica sem contexto.
+- Exija confirmação explícita para exclusão/remoção irreversível, perda de dados, cancelamento com consequência relevante e ações financeiras ou de alto impacto. Para ações rotineiras, reversíveis e de baixo risco, evite a confirmação extra e ofereça “Desfazer” quando viável.
+- Use uma página/etapa de revisão antes de enviar quando houver muitos dados, múltiplos itens, impacto alto ou necessidade real de revisar o resumo. Não crie uma tela de confirmação apenas para acrescentar um clique.
+- Dialog deve ter título acessível, foco inicial apropriado, suporte a teclado, foco contido enquanto aberto, fechamento coerente por Escape quando seguro e retorno de foco ao acionador.
+
+## Acessibilidade e qualidade
+- Busque contraste WCAG AA: 4.5:1 para texto normal e 3:1 para texto grande e componentes/gráficos relevantes. Verifique especialmente texto sobre `primary`, `success`, `warning` e `info`; não presuma que texto branco funciona em todos.
+- Inclua foco de teclado claramente visível (`focus-visible:ring-*`), labels ligados a campos, mensagens de erro legíveis e semântica correta. Não remova outline sem substituição.
+- Estados hover/focus/active/disabled/loading/vazio/erro/sucesso devem ser considerados conforme o componente.
+- Prefira HTML semântico, componentes pequenos com responsabilidade clara e classes Tailwind legíveis. Extraia um componente quando o padrão se repetir; evite duplicar longas cadeias de classes.
+- Não use `@apply` como substituto geral da composição por utilitários. Use CSS compartilhado para tokens, estilos realmente globais e casos onde a abstração melhora manutenção.
+
+## Verificação antes de concluir
+1. Confira visualização em ~375px, ~768px, ~1024px e tela larga; procure overflow horizontal, campos espremidos e ações inacessíveis.
+2. Verifique consistência de altura de campos e botões, alinhamento, espaçamento, tipografia, contraste e estados de interação.
+3. Confirme que toast/modal/alert foram escolhidos segundo as regras acima e que ações destrutivas têm confirmação contextual.
+4. Rode os comandos de lint, typecheck e/ou build que o projeto disponibilizar, se forem aplicáveis. Corrija erros introduzidos pela alteração.
+5. Ao concluir uma tarefa de UI, resuma as telas/componentes alterados e informe verificações realizadas e limitações ainda existentes.

@@ -25,4 +25,4 @@ export function healthLabel(level: HealthLevel): string {
   return "ok";
 }
 
-export const HEALTH_META = "meta: manter abaixo de 70%";
+export const HEALTH_META = "Meta: manter abaixo de 70%";

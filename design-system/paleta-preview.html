@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paleta Bootstrap + Tailwind</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#212529;background:#f8f9fa}*{box-sizing:border-box}body{margin:0;padding:32px;max-width:1100px;margin-inline:auto}h1{font-size:clamp(1.7rem,3vw,2.25rem);margin:0 0 8px}p{color:#6c757d;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-top:24px}.swatch{background:#fff;border:1px solid #dee2e6;border-radius:12px;overflow:hidden}.color{height:92px;padding:14px;display:flex;align-items:flex-end;font-weight:700}.info{padding:14px}.name{font-weight:700}.hex{font-family:ui-monospace,monospace;color:#6c757d;font-size:.9rem;margin-top:4px}.use{font-size:.9rem;color:#495057;margin-top:8px}.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{border:0;border-radius:6px;padding:11px 16px;font:600 .95rem system-ui;cursor:pointer}.primary{background:#0d6efd;color:white}.success{background:#198754;color:white}.warning{background:#ffc107;color:#212529}.info-btn{background:#0dcaf0;color:#212529}.secondary{background:#6c757d;color:white}.danger{background:#dc3545;color:white}.muted{font-size:.9rem}
+</style>
+</head>
+<body>
+<h1>Paleta de UI — Bootstrap 5.3 + Tailwind</h1>
+<p>Primária azul, com botões semânticos em azul, verde, ciano e amarelo. Vermelho reservado para perigo/erro; roxo não é cor primária.</p>
+<div class="grid">
+<div class="swatch"><div class="color" style="background:#0d6efd;color:white">Primary</div><div class="info"><div class="name">Primary</div><div class="hex">#0d6efd</div><div class="use">CTA principal, links e seleção ativa</div></div></div>
+<div class="swatch"><div class="color" style="background:#6c757d;color:white">Secondary</div><div class="info"><div class="name">Secondary</div><div class="hex">#6c757d</div><div class="use">Ação secundária e metadados</div></div></div>
+<div class="swatch"><div class="color" style="background:#198754;color:white">Success</div><div class="info"><div class="name">Success</div><div class="hex">#198754</div><div class="use">Aprovar, ativar e concluir</div></div></div>
+<div class="swatch"><div class="color" style="background:#0dcaf0;color:#212529">Info</div><div class="info"><div class="name">Info</div><div class="hex">#0dcaf0</div><div class="use">Informações e notificações informativas</div></div></div>
+<div class="swatch"><div class="color" style="background:#ffc107;color:#212529">Warning</div><div class="info"><div class="name">Warning</div><div class="hex">#ffc107</div><div class="use">Atenção não destrutiva; texto escuro</div></div></div>
+<div class="swatch"><div class="color" style="background:#dc3545;color:white">Danger</div><div class="info"><div class="name">Danger</div><div class="hex">#dc3545</div><div class="use">Erros e ações destrutivas</div></div></div>
+<div class="swatch"><div class="color" style="background:#f8f9fa;color:#212529;border-bottom:1px solid #dee2e6">Light / Background</div><div class="info"><div class="name">Light / Background</div><div class="hex">#f8f9fa</div><div class="use">Fundo geral e superfícies discretas</div></div></div>
+<div class="swatch"><div class="color" style="background:#212529;color:white">Dark / Foreground</div><div class="info"><div class="name">Dark / Foreground</div><div class="hex">#212529</div><div class="use">Texto principal, não botão primário</div></div></div>
+</div>
+<h2 style="margin-top:32px">Exemplo de botões</h2>
+<div class="buttons"><button class="btn primary">Salvar alterações</button><button class="btn success">Aprovar</button><button class="btn info-btn">Ver detalhes</button><button class="btn warning">Revisar pendência</button><button class="btn secondary">Cancelar</button><button class="btn danger">Excluir registro</button></div>
+<p class="muted">Verifique o contraste do texto no contexto final; a semântica de cor não substitui labels, mensagens e estados acessíveis.</p>
+</body></html>

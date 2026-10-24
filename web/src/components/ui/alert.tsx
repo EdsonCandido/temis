@@ -2,13 +2,14 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const alertVariants = cva("relative w-full rounded-md border px-4 py-3 text-sm", {
+const alertVariants = cva("relative w-full rounded-lg border px-4 py-3 text-sm leading-[1.45]", {
   variants: {
     variant: {
-      default: "border-border bg-card text-foreground",
-      destructive: "border-destructive/40 bg-destructive/10 text-destructive",
-      warning: "border-chart-3/40 bg-chart-3/10 text-chart-3",
-      success: "border-chart-2/40 bg-chart-2/10 text-chart-2",
+      default: "border-border bg-surface text-foreground",
+      destructive: "border-danger/30 bg-danger-subtle text-foreground",
+      warning: "border-warning/40 bg-warning-subtle text-foreground",
+      success: "border-success/30 bg-success-subtle text-foreground",
+      info: "border-info/40 bg-info-subtle text-foreground",
     },
   },
   defaultVariants: {
@@ -25,9 +26,9 @@ export function Alert({
 }
 
 export function AlertTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h5 className={cn("mb-1 font-sans font-semibold leading-none tracking-wide", className)} {...props} />;
+  return <h5 className={cn("mb-1 font-medium", className)} {...props} />;
 }
 
-export function AlertDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <div className={cn("text-sm [&_p]:leading-relaxed", className)} {...props} />;
+export function AlertDescription({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("text-sm [&_p]:leading-[1.45]", className)} {...props} />;
 }

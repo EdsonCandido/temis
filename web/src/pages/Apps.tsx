@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type AppRow, type Host } from "@/api";
+import { toast } from "@/lib/toast";
 import { Field } from "@/components/field";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -62,6 +63,7 @@ export function Apps() {
       e.currentTarget.reset();
       setSourceType("docker");
       setCertMode("auto");
+      toast.success("Aplicação cadastrada.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "falha ao cadastrar");
@@ -71,9 +73,8 @@ export function Apps() {
   return (
     <>
       <PageHeader
-        kicker="carga útil"
         title="Aplicações"
-        description="Imagem Docker ou GitHub. TLS obrigatório: Let's Encrypt automático ou certificado próprio."
+        description="Imagem Docker ou GitHub. TLS obrigatório: Let’s Encrypt automático ou certificado próprio."
       />
 
       {error ? (
@@ -100,7 +101,7 @@ export function Apps() {
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="grid gap-4 sm:grid-cols-2">
-              <Field label="host" htmlFor="hostId" className="sm:col-span-2">
+              <Field label="Host" htmlFor="hostId" className="sm:col-span-2">
                 <SelectNative id="hostId" name="hostId" required disabled={hosts.length === 0}>
                   {hosts.map((h) => (
                     <option key={h.id} value={h.id}>
@@ -109,13 +110,13 @@ export function Apps() {
                   ))}
                 </SelectNative>
               </Field>
-              <Field label="nome" htmlFor="name">
+              <Field label="Nome" htmlFor="name">
                 <Input id="name" name="name" required placeholder="atlas-web" />
               </Field>
-              <Field label="domínio público" htmlFor="domain">
+              <Field label="Domínio público" htmlFor="domain">
                 <Input id="domain" name="domain" required placeholder="app.seudominio.com" />
               </Field>
-              <Field label="origem" htmlFor="sourceType" className="sm:col-span-2">
+              <Field label="Origem" htmlFor="sourceType" className="sm:col-span-2">
                 <SelectNative
                   id="sourceType"
                   value={sourceType}
@@ -135,7 +136,7 @@ export function Apps() {
               </Field>
               {sourceType === "github" ? (
                 <>
-                  <Field label="branch / tag" htmlFor="githubRef">
+                  <Field label="Branch / tag" htmlFor="githubRef">
                     <Input id="githubRef" name="githubRef" defaultValue="main" />
                   </Field>
                   <Field label="Dockerfile" htmlFor="dockerfilePath">
@@ -143,13 +144,13 @@ export function Apps() {
                   </Field>
                 </>
               ) : null}
-              <Field label="porta interna do container" htmlFor="internalPort">
+              <Field label="Porta interna do container" htmlFor="internalPort">
                 <Input id="internalPort" name="internalPort" type="number" defaultValue={80} required />
               </Field>
-              <Field label="variáveis de ambiente" htmlFor="envText" className="sm:col-span-2">
+              <Field label="Variáveis de ambiente" htmlFor="envText" className="sm:col-span-2">
                 <Textarea id="envText" name="envText" rows={4} placeholder="KEY=valor, uma por linha" />
               </Field>
-              <Field label="certificado TLS" htmlFor="certMode" className="sm:col-span-2">
+              <Field label="Certificado TLS" htmlFor="certMode" className="sm:col-span-2">
                 <SelectNative
                   id="certMode"
                   value={certMode}
@@ -161,7 +162,7 @@ export function Apps() {
               </Field>
               {certMode === "custom" ? (
                 <>
-                  <Field label="certificado (fullchain PEM)" htmlFor="certPem" className="sm:col-span-2">
+                  <Field label="Certificado (fullchain PEM)" htmlFor="certPem" className="sm:col-span-2">
                     <Textarea
                       id="certPem"
                       name="certPem"
@@ -171,7 +172,7 @@ export function Apps() {
                       placeholder="-----BEGIN CERTIFICATE-----"
                     />
                   </Field>
-                  <Field label="chave privada (PEM)" htmlFor="keyPem" className="sm:col-span-2">
+                  <Field label="Chave privada (PEM)" htmlFor="keyPem" className="sm:col-span-2">
                     <Textarea
                       id="keyPem"
                       name="keyPem"
@@ -203,10 +204,10 @@ export function Apps() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>app</TableHead>
-                    <TableHead>domínio</TableHead>
-                    <TableHead>origem</TableHead>
-                    <TableHead>status</TableHead>
+                    <TableHead>App</TableHead>
+                    <TableHead>Domínio</TableHead>
+                    <TableHead>Origem</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

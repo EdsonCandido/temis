@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, type AppRow, type ProxyOptions } from "@/api";
+import { toast } from "@/lib/toast";
 import { Field } from "@/components/field";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -71,6 +72,17 @@ export function AppDetail() {
     setError("");
     try {
       await api(`/api/apps/${id}${path}`, { method });
+      const done =
+        method === "DELETE"
+          ? "Aplicação removida."
+          : path === "/deploy"
+            ? "Deploy iniciado."
+            : path === "/restart"
+              ? "Reinício enviado."
+              : path === "/stop"
+                ? "Stop enviado."
+                : "Ação concluída.";
+      toast.success(done);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "erro");
@@ -94,6 +106,7 @@ export function AppDetail() {
         throw new Error("Certificado próprio exige fullchain PEM e chave privada");
       }
       await api(`/api/apps/${id}/proxy`, { method: "POST", body: JSON.stringify(body) });
+      toast.success("Proxy nginx salvo.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "erro nginx");
@@ -126,9 +139,8 @@ export function AppDetail() {
   return (
     <>
       <PageHeader
-        kicker={app.slug}
         title={app.name}
-        description={`${app.sourceType} · porta ${app.internalPort}${
+        description={`${app.slug} · ${app.sourceType} · porta ${app.internalPort}${
           app.publishedPort ? ` → 127.0.0.1:${app.publishedPort}` : ""
         } · TLS ${certLabel}`}
         actions={
@@ -194,7 +206,7 @@ export function AppDetail() {
             </CardHeader>
             <CardContent>
               <form onSubmit={saveProxy} className="grid gap-5 sm:grid-cols-2">
-                <Field label="certificado TLS" htmlFor="certMode" className="sm:col-span-2">
+                <Field label="Certificado TLS" htmlFor="certMode" className="sm:col-span-2">
                   <SelectNative
                     id="certMode"
                     value={proxy.certMode}
@@ -216,7 +228,7 @@ export function AppDetail() {
                         Certificado próprio já salvo. Cole de novo só para substituir.
                       </p>
                     ) : null}
-                    <Field label="certificado (fullchain PEM)" htmlFor="certPem" className="sm:col-span-2">
+                    <Field label="Certificado (fullchain PEM)" htmlFor="certPem" className="sm:col-span-2">
                       <Textarea
                         id="certPem"
                         rows={5}
@@ -231,7 +243,7 @@ export function AppDetail() {
                         required={!proxy.hasCustomCert}
                       />
                     </Field>
-                    <Field label="chave privada (PEM)" htmlFor="keyPem" className="sm:col-span-2">
+                    <Field label="Chave privada (PEM)" htmlFor="keyPem" className="sm:col-span-2">
                       <Textarea
                         id="keyPem"
                         rows={5}
@@ -250,9 +262,9 @@ export function AppDetail() {
                 ) : null}
                 {(
                   [
-                    ["forceHttps", "forçar HTTPS"],
+                    ["forceHttps", "Forçar HTTPS"],
                     ["websocket", "WebSocket"],
-                    ["gzip", "gzip"],
+                    ["gzip", "Gzip"],
                     ["hsts", "HSTS"],
                   ] as const
                 ).map(([key, label]) => (
@@ -265,7 +277,7 @@ export function AppDetail() {
                     />
                   </div>
                 ))}
-                <Field label="redirecionar www" htmlFor="wwwRedirect">
+                <Field label="Redirecionar www" htmlFor="wwwRedirect">
                   <SelectNative
                     id="wwwRedirect"
                     value={proxy.wwwRedirect}
@@ -278,7 +290,7 @@ export function AppDetail() {
                     <option value="to-apex">www → apex</option>
                   </SelectNative>
                 </Field>
-                <Field label="body máximo (MB)" htmlFor="clientMaxBodyMb">
+                <Field label="Body máximo (MB)" htmlFor="clientMaxBodyMb">
                   <Input
                     id="clientMaxBodyMb"
                     type="number"
